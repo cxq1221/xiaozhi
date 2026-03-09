@@ -1,5 +1,18 @@
 import type { ChannelPlugin } from "openclaw/plugin-sdk";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
+import { xiaozhiOnboardingAdapter } from "./onboarding.js";
+
+const XiaozhiConfigSchema = {
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      enabled: { type: "boolean" },
+      xiaozhiServerUrl: { type: "string", pattern: "^https?://" },
+      deviceId: { type: "string", minLength: 1 },
+      timeout: { type: "integer", minimum: 1, maximum: 300 },
+    },
+  },
+} as const;
 
 export const xiaozhiPlugin: ChannelPlugin = {
   id: "xiaozhi",
@@ -16,7 +29,8 @@ export const xiaozhiPlugin: ChannelPlugin = {
     selectionDocsOmitLabel: false,
     selectionExtras: [],
   },
-  configSchema: emptyPluginConfigSchema(),
+  reload: { configPrefixes: ["channels.xiaozhi"] },
+  configSchema: XiaozhiConfigSchema,
   config: {
     listAccountIds: () => ["default"],
     resolveAccount: (cfg) => ({
@@ -25,7 +39,7 @@ export const xiaozhiPlugin: ChannelPlugin = {
       enabled: cfg.channels?.xiaozhi?.enabled ?? false,
       config: {
         xiaozhiServerUrl: cfg.channels?.xiaozhi?.xiaozhiServerUrl ?? "http://localhost:8003",
-        deviceId: cfg.channels?.xiaozhi?.deviceId ?? "esp32_default",
+        deviceId: cfg.channels?.xiaozhi?.deviceId ?? "b0:a6:04:55:0f:d0",
         timeout: cfg.channels?.xiaozhi?.timeout ?? 30,
       },
     }),
@@ -40,6 +54,20 @@ export const xiaozhiPlugin: ChannelPlugin = {
       configured: Boolean(account.config.xiaozhiServerUrl),
     }),
   },
+  setup: {
+    resolveAccountId: () => "default",
+    applyAccountConfig: ({ cfg }) => ({
+      ...cfg,
+      channels: {
+        ...cfg.channels,
+        xiaozhi: {
+          ...cfg.channels?.xiaozhi,
+          enabled: true,
+        },
+      },
+    }),
+  },
+  onboarding: xiaozhiOnboardingAdapter,
   capabilities: {
     chatTypes: ["direct"],
     reactions: false,

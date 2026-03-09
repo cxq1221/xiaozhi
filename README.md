@@ -4,6 +4,31 @@ OpenClaw 小智（Xiaozhi） ESP32 语音助手通道插件。
 
 该插件将运行在 ESP32 上的 “xiaozhi-server” 与 OpenClaw 网关打通，把设备采集到的语音转文字消息转发给 OpenClaw 的 Agent，并把 Agent 的回复再推回 xiaozhi 设备进行播报或显示。
 
+## Quickstart
+
+```bash
+# 1) 安装插件
+openclaw plugins install @cxq1221/xiaozhi@0.0.4
+
+# 2) 配置通道（手动配置）
+openclaw config set channels.xiaozhi.enabled true --strict-json
+openclaw config set channels.xiaozhi.xiaozhiServerUrl "http://localhost:8003"
+openclaw config set channels.xiaozhi.deviceId "b0:a6:04:55:0f:d0"
+openclaw config set channels.xiaozhi.timeout 30 --strict-json
+
+# 通过交互命令行配置的话直接运行 openclaw config
+
+# 3) 重启网关并检查
+openclaw gateway restart
+openclaw plugins info xiaozhi
+```
+
+说明：
+
+- `xiaozhiServerUrl`：你的 xiaozhi-server 地址。
+- `deviceId`：设备标识，需与 xiaozhi-server 侧一致。
+- `timeout`：长轮询超时秒数（建议 30）。
+
 ---
 
 ## 功能简介
@@ -47,73 +72,20 @@ OpenClaw 小智（Xiaozhi） ESP32 语音助手通道插件。
   - 注册插件 `id: "xiaozhi"`，名称 `Xiaozhi`。
   - 在 `register` 中保存 `runtime` 并注册 `xiaozhi` 通道。
 
-- `src/runtime.ts`  
+- `src/runtime.ts`
   - 存储并导出全局的 `PluginRuntime` 实例，用于在监控循环中调用 OpenClaw 核心能力。
 
-- `src/channel.ts`  
+- `src/channel.ts`
   - 定义 `xiaozhiPlugin: ChannelPlugin`。
   - 描述通道元信息、配置解析逻辑、能力声明以及 `gateway.startAccount` 启动逻辑。
 
-- `src/monitor.ts`  
+- `src/monitor.ts`
   - 核心轮询逻辑 `monitorXiaozhiProvider`。
   - 从 xiaozhi-server 拉取消息后调用 `handleXiaozhiMessage`：
     - 解析路由信息。
     - 构造 inbound 上下文。
     - 通过 `createReplyDispatcherWithTyping` + `dispatchReplyFromConfig` 走一整套自动回复管线。
     - 将最终回复 POST 回 xiaozhi-server。
-
----
-
-## 安装与集成
-
-> 本仓库设计为 OpenClaw 仓库下的一个扩展（`extensions/xiaozhi`）。以下步骤假设你已经在 OpenClaw 主仓库中工作。
-
-1. **安装依赖**
-
-   在 OpenClaw 仓库根目录执行：
-
-   ```bash
-   pnpm install
-   ```
-
-   确保 workspace 中包含 `extensions/xiaozhi`，并且依赖已安装完成。
-
-2. **启用通道配置**
-
-   在你的 OpenClaw 配置（例如 `~/.openclaw/config.json` 或项目内的配置文件）中，为 `xiaozhi` 通道新增配置项。大致结构如下（字段名与代码保持一致）：
-
-   ```jsonc
-   {
-     "channels": {
-       "xiaozhi": {
-         "enabled": true,
-         // xiaozhi-server 的 HTTP 地址
-         "xiaozhiServerUrl": "http://localhost:8003",
-         // 设备标识，用于区分多个 ESP32 设备
-         "deviceId": "esp32_default",
-         // 长轮询超时（秒）
-         "timeout": 30
-       }
-     }
-   }
-   ```
-
-   说明：
-
-   - `enabled`：是否启用 xiaozhi 通道。
-   - `xiaozhiServerUrl`：xiaozhi-server 的基础 URL。
-   - `deviceId`：当前账号默认监听的设备 ID。
-   - `timeout`：长轮询超时秒数，默认为 `30`。
-
-3. **运行 OpenClaw 网关**
-
-   在 OpenClaw 仓库根目录，按主项目文档启动网关，例如：
-
-   ```bash
-   pnpm openclaw gateway run
-   ```
-
-   启动后，xiaozhi 通道会根据配置自动开始向 `xiaozhiServerUrl` 轮询更新。
 
 ---
 
@@ -187,20 +159,8 @@ Content-Type: application/json
 
 ---
 
-## 开发与调试提示
-
-- 日志：
-  - 插件在关键流程中使用 `runtime.log` / `runtime.error` 输出日志，前缀为 `[xiaozhi]`。
-  - 可以通过 OpenClaw 提供的日志工具（例如 `scripts/clawlog.sh`）观察网关侧行为。
-
-- 停止：
-  - 当 OpenClaw 网关关闭或取消任务时，会触发 `abortSignal`，监控循环会退出并打印 `"[xiaozhi] monitor stopped"`。
-
----
-
 ## 许可证
 
 本项目采用 [MIT 许可证](LICENSE) 开源。
 
 Copyright (c) 2026 OpenClaw
-
